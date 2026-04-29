@@ -165,16 +165,10 @@ function CreateAgreementView({
     (async () => {
       setLoadingCompanies(true);
       try {
-        const res = await fetch(
-          `/api/companies/status/QUOTATION_SENT`,
-        );
-        if (res.ok) {
-          const json = await res.json();
-          const list = Array.isArray(json) ? json : json?.data ?? [];
-          setQuotationCompanies(list);
-        } else {
-          setQuotationCompanies([]);
-        }
+        const res = await api.get('/api/companies/status/QUOTATION_SENT');
+        const json = res.data;
+        const list = Array.isArray(json) ? json : (json?.data ?? []);
+        setQuotationCompanies(list);
       } catch {
         setQuotationCompanies([]);
       } finally {
@@ -1046,18 +1040,7 @@ function MarkAsSignedConfirmSheet({
     setSigning(true);
     setError('');
     try {
-      const res = await fetch(
-        `/api/companies/${agreement.companyId}/sign-agreement`,
-        { method: 'PUT' },
-      );
-      if (!res.ok) {
-        let msg = `HTTP ${res.status}`;
-        try {
-          const body = await res.json();
-          msg = body?.message ?? body?.error ?? msg;
-        } catch {}
-        throw new Error(msg);
-      }
+      await api.put(`/api/companies/${agreement.companyId}/sign-agreement`);
       onSigned(agreement.id);
       onClose();
     } catch (err: any) {
