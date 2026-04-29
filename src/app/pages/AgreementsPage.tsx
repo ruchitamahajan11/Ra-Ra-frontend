@@ -204,7 +204,8 @@ function CreateAgreementView({
   const agreementNo = generateAgreementNo(existingCount);
   const nonEmptyClauses = clauses.filter((c) => c.trim());
 
-  const isDetailsValid = !!companyId && !!draftFile;
+  // Draft is optional, only companyId is required for details
+  const isDetailsValid = !!companyId;
   const isEmailValid = !!emailSubject.trim() && !!emailBody.trim();
   const isFormValid = isDetailsValid;
   const isSendValid = isDetailsValid && isEmailValid;
@@ -271,22 +272,32 @@ function CreateAgreementView({
   };
 
   const handleSendMail = async () => {
-    if (!isSendValid || isLoading || !draftFile) return;
+    if (!isSendValid || isLoading) return;
     setActionState('sending');
     setErrorMsg('');
     try {
       if (nonEmptyClauses.length > 0) {
         await saveDraft({ companyId: Number(companyId), additionalClauses: nonEmptyClauses });
       }
-      const templateContent = await extractTextFromDocx(draftFile);
+      
+      let templateContent = '';
+      let fileName = '';
+      
+      // Extract text only if draftFile is provided
+      if (draftFile) {
+        templateContent = await extractTextFromDocx(draftFile);
+        fileName = draftFile.name;
+      }
+      
       await finalizeAndSend(Number(companyId), {
         templateContent,
-        fileName: draftFile.name,
+        fileName,
         additionalClauses: nonEmptyClauses,
         selectedClauseIds: [],
         emailSubject: emailSubject.trim(),
         emailBody: emailBody.trim(),
       });
+      
       const agreement = buildAgreement();
       onSaved(agreement);
       setActionState('sent');
@@ -320,13 +331,12 @@ function CreateAgreementView({
           <h2 className="text-slate-800 font-semibold text-sm">New Agreement</h2>
           <p className="text-slate-400 text-xs">{agreementNo}</p>
         </div>
-        {/* No preview button — removed as requested */}
       </div>
 
       {/* ── Blue banner ── */}
       <div className="bg-blue-600 px-4 py-2.5 flex items-center justify-between shrink-0">
         <span className="text-blue-200 text-xs">
-          {draftFile ? 'Draft Ready' : 'Upload Draft to Continue'}
+          {draftFile ? 'Draft Ready' : 'No Draft Attached (Optional)'}
         </span>
         <span className="text-white font-semibold text-xs">
           {draftFile
@@ -516,7 +526,7 @@ function CreateAgreementView({
                     <span className="text-white text-xs font-bold">3</span>
                   </div>
                   <p className="text-sm font-semibold text-slate-800 flex-1 text-left">
-                    Upload Draft <span className="text-red-500">*</span>
+                    Upload Draft <span className="text-xs font-normal text-slate-400">(optional)</span>
                   </p>
                   {draftFile && (
                     <CheckCircle size={14} className="text-green-500 mr-1 shrink-0" />
@@ -627,7 +637,7 @@ function CreateAgreementView({
                         {draftFile.name}
                       </span>
                     ) : (
-                      <span className="text-red-400">Not uploaded</span>
+                      <span className="text-slate-400">Not uploaded</span>
                     )}
                   </p>
                 </div>
@@ -792,10 +802,10 @@ function CreateAgreementView({
 
           <button
             disabled
-            className="flex-1 flex items-center justify-center gap-2 py-3 border border-slate-100 text-slate-300 bg-slate-50 rounded-xl text-sm font-medium cursor-not-allowed"
+            className="flex-1 flex items-center justify-center gap-2 py-3 border border-slate-100 text-slate-400 bg-slate-50 rounded-xl text-sm font-medium cursor-not-allowed"
           >
             <FileText size={15} />
-            {draftFile ? draftFile.name.slice(0, 12) + '…' : 'No file yet'}
+            {draftFile ? draftFile.name.slice(0, 12) + '…' : 'No draft attached'}
           </button>
         </div>
 
@@ -806,7 +816,7 @@ function CreateAgreementView({
           className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50 disabled:bg-slate-300 hover:bg-blue-700 transition-colors shadow-md"
         >
           {actionState === 'sending' ? (
-            <><Loader2 size={15} className="animate-spin" /> Extracting &amp; Sending…</>
+            <><Loader2 size={15} className="animate-spin" /> Finalizing &amp; Sending…</>
           ) : actionState === 'sent' ? (
             <><Check size={15} className="stroke-[3]" /> Mail Sent Successfully!</>
           ) : (
