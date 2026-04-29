@@ -2,13 +2,14 @@ import React from 'react';
 import { NavLink, useNavigate, Outlet, useLocation } from 'react-router';
 import {
   LayoutDashboard, Building2, FileText, FileCheck, Receipt,
-  Bell, User, TrendingUp, ChevronLeft,
+  Bell, User, TrendingUp, ClipboardList,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/companies', label: 'Companies', icon: Building2 },
+  { to: '/proposals', label: 'Proposal', icon: ClipboardList },
   { to: '/quotations', label: 'Quotes', icon: FileText },
   { to: '/agreements', label: 'Agreements', icon: FileCheck },
   { to: '/invoices', label: 'Invoices', icon: Receipt },
@@ -18,6 +19,7 @@ const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
   '/companies': 'Companies',
   '/quotations': 'Quotations',
+  '/proposals': 'Proposals',
   '/agreements': 'Agreements',
   '/invoices': 'Invoices',
 };
@@ -27,7 +29,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const title = pageTitles[location.pathname] ?? 'TechCorp';
+  const title = pageTitles[location.pathname] ?? 'RA & RA';
 
   return (
     // ✅ FIXED: removed overflow-hidden — it was trapping fixed-position modals
@@ -37,11 +39,14 @@ export default function Layout() {
         className="shrink-0 flex items-center justify-between px-4 pt-safe"
         style={{ background: '#0c1e3d', height: 56 }}
       >
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center">
-            <TrendingUp size={14} className="text-white" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center shrink-0">
+            <TrendingUp size={20} className="text-white" />
           </div>
-          <span className="text-white text-sm font-semibold">{title}</span>
+          <div className="flex flex-col leading-tight">
+            <span className="text-white text-xs font-bold tracking-widest uppercase">RA & RA</span>
+            <span className="text-blue-300 text-[10px] tracking-wide">{title}</span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button className="relative w-9 h-9 flex items-center justify-center rounded-full bg-white/10 active:bg-white/20">
@@ -81,10 +86,10 @@ export default function Layout() {
             >
               {({ isActive }) => (
                 <>
-                  <div className={`w-10 h-6 flex items-center justify-center rounded-full transition-all ${isActive ? 'bg-blue-50' : ''}`}>
-                    <Icon size={18} />
+                  <div className={`w-8 h-5 flex items-center justify-center rounded-full transition-all ${isActive ? 'bg-blue-50' : ''}`}>
+                    <Icon size={16} />
                   </div>
-                  <span className="text-[10px] font-medium leading-none">{label}</span>
+                  <span className="text-[9px] font-medium leading-none">{label}</span>
                 </>
               )}
             </NavLink>

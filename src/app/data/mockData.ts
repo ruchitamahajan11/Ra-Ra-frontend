@@ -96,7 +96,7 @@ export interface Invoice {
 
 // ─── OUR COMPANY DETAILS ──────────────────────────────────────────────────────
 export const OUR_COMPANY = {
-  name: 'Ra & Ra Counsel',
+  name: 'RA & RA Counsel',
   address: '123, Tech Park, Whitefield',
   city: 'Pune',
   state: 'Maharashtra',

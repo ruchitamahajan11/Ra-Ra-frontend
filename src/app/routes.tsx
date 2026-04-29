@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import CompaniesPage from './pages/CompaniesPage';
 import QuotationsPage from './pages/QuotationsPage';
+import ProposalPage from './pages/ProposalPage';
 import AgreementsPage from './pages/AgreementsPage';
 import InvoicesPage from './pages/InvoicesPage';
 import { useApp } from './context/AppContext';
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
       { index: true, Component: DashboardPage },
       { path: 'companies', Component: CompaniesPage },
       { path: 'quotations', Component: QuotationsPage },
+      { path: 'proposals', Component: ProposalPage },
       { path: 'agreements', Component: AgreementsPage },
       { path: 'invoices', Component: InvoicesPage },
     ],

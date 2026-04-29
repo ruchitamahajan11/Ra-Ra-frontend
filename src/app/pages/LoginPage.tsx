@@ -51,7 +51,7 @@ export default function LoginPage() {
             <Scale size={48} className="text-blue-300" />
           </div>
           <h1 className="text-white text-4xl font-bold mb-3" style={{ fontFamily: 'Georgia, serif' }}>
-            Ra & Ra Counsel
+            RA & RA Counsel
           </h1>
           <p className="text-blue-300/70 text-sm tracking-widest uppercase mb-10">
             Legal & Advisory Practice
@@ -85,7 +85,7 @@ export default function LoginPage() {
             <Scale size={40} className="text-blue-300" />
           </div>
           <h1 className="text-white text-center" style={{ fontSize: '1.6rem', fontWeight: 700, fontFamily: 'Georgia, serif' }}>
-            Ra & Ra Counsel
+            RA & RA Counsel
           </h1>
         </div>
 

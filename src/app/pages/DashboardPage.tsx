@@ -130,7 +130,7 @@ export default function DashboardPage() {
               <h1 style={{
                 color: '#0c1e3d', fontSize: '1.75rem', fontWeight: 700,
                 lineHeight: 1.1, letterSpacing: '-0.01em',
-              }}>Ra & Ra</h1>
+              }}>RA & RA</h1>
               <h1 className="gold-shimmer" style={{
                 fontSize: '1.75rem', fontWeight: 700,
                 lineHeight: 1.1, letterSpacing: '-0.01em',
@@ -215,7 +215,7 @@ export default function DashboardPage() {
             <p style={{
               color: '#b4913c', fontSize: '0.65rem',
               letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: '1rem',
-            }}>— Ra & Ra Counsel</p>
+            }}>— RA & RA COUNSEL</p>
           </div>
 
         </div>
