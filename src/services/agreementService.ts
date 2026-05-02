@@ -1,6 +1,4 @@
-import { API_CONFIG } from '../config/api.config';
-
-const BASE_URL = API_CONFIG.BASE_URL;
+import api from './api';
 
 export interface SaveDraftPayload {
   companyId: number;
@@ -58,76 +56,48 @@ function normalizeDocxText(raw: string): string {
     .trim();
 }
 
-async function apiFetch<T>(
-  url: string,
-  options: RequestInit,
-): Promise<ApiResponse<T>> {
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'ngrok-skip-browser-warning': 'true',
-      ...(options.headers ?? {}),
-    },
-  });
-
-  if (!res.ok) {
-    let errorText = `HTTP ${res.status}`;
-    try {
-      const errBody = await res.json();
-      errorText = errBody?.message ?? errBody?.error ?? errorText;
-    } catch {
-      errorText = (await res.text()) || errorText;
-    }
-    throw new Error(errorText);
-  }
-
-  return res.json() as Promise<ApiResponse<T>>;
-}
-
 export async function saveDraft(payload: SaveDraftPayload): Promise<void> {
-  await apiFetch<void>(`${BASE_URL}/api/agreements/draft`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  try {
+    await api.post('/api/agreements/draft', payload);
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Failed to save draft');
+  }
 }
 
-export async function finalizeAndSend(
-  companyId: number,
-  payload: FinalizePayload,
-): Promise<void> {
-  await apiFetch<void>(`${BASE_URL}/api/agreements/finalize/${companyId}`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+export async function finalizeAndSend(companyId: number, payload: FinalizePayload): Promise<void> {
+  try {
+    await api.post(`/api/agreements/finalize/${companyId}`, payload);
+  } catch (error: any) {
+    // Specifically trap 403 so it displays cleanly in your UI
+    if (error.response?.status === 403) {
+      throw new Error('HTTP 403 Forbidden: Spring Security is blocking this request.');
+    }
+    throw new Error(error.response?.data?.message || 'Failed to finalize agreement.');
+  }
 }
 
-export async function getClausesByCompany(
-  companyId: number,
-): Promise<ClauseResponseDto[]> {
-  const res = await apiFetch<ClauseResponseDto[]>(
-    `${BASE_URL}/api/agreements/clauses/${companyId}`,
-    { method: 'GET' },
-  );
-  return res.data ?? [];
+export async function getClausesByCompany(companyId: number): Promise<ClauseResponseDto[]> {
+  try {
+    const res = await api.get<ApiResponse<ClauseResponseDto[]>>(`/api/agreements/clauses/${companyId}`);
+    return res.data.data ?? [];
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch clauses');
+  }
 }
 
-export async function updateClause(
-  clauseId: number,
-  newContent: string,
-): Promise<ClauseResponseDto> {
-  const res = await apiFetch<ClauseResponseDto>(
-    `${BASE_URL}/api/agreements/clauses/${clauseId}`,
-    {
-      method: 'PUT',
-      body: JSON.stringify({ clauseContent: newContent }),
-    },
-  );
-  return res.data;
+export async function updateClause(clauseId: number, newContent: string): Promise<ClauseResponseDto> {
+  try {
+    const res = await api.put<ApiResponse<ClauseResponseDto>>(`/api/agreements/clauses/${clauseId}`, { clauseContent: newContent });
+    return res.data.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Failed to update clause');
+  }
 }
 
 export async function deleteClause(clauseId: number): Promise<void> {
-  await apiFetch<void>(`${BASE_URL}/api/agreements/clauses/${clauseId}`, {
-    method: 'DELETE',
-  });
+  try {
+    await api.delete(`/api/agreements/clauses/${clauseId}`);
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Failed to delete clause');
+  }
 }

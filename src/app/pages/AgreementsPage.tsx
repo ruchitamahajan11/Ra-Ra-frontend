@@ -708,7 +708,7 @@ function CreateAgreementView({
                     className={`${inputCls} ${
                       emailSubject.trim() ? 'border-green-300 focus:ring-green-400 bg-green-50/20' : ''
                     }`}
-                    placeholder="e.g. Partnership Proposal: RA & RA x JAPL"
+                    placeholder="e.g. Partnership Agreement"
                   />
                   <p className="text-xs text-slate-400 mt-1">{emailSubject.length} characters</p>
                 </div>

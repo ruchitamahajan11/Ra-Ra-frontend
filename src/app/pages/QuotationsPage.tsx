@@ -2,16 +2,16 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus, X, Trash2, Eye, FileText, Send, Check,
   ArrowLeft, Download, AlertCircle, Loader2, Mail,
-  ChevronDown, ChevronUp, Search, CheckCircle, // Added Search icon
+  ChevronDown, ChevronUp, Search, CheckCircle,
 } from 'lucide-react';
 import { OUR_COMPANY, formatCurrency } from '../data/mockData';
 import {
   quotationService,
   QuotationResponse,
   CompanyOption,
+  QuotationRequest 
 } from '../../services/quotationService';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function generateId() { return `item-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
 function todayISO() { return new Date().toISOString().split('T')[0]; }
 function formatDate(iso: string) {
@@ -22,7 +22,6 @@ const inputCls =
   'w-full px-3.5 py-3 text-sm border border-slate-200 rounded-xl ' +
   'focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white';
 
-// ─── Extended item type ───────────────────────────────────────────────────────
 interface ExtendedItem {
   id: string;
   description: string;
@@ -54,9 +53,6 @@ function makeItem(): ExtendedItem {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  PreviewSheet
-// ─────────────────────────────────────────────────────────────────────────────
 function PreviewSheet({
   quotation,
   company,
@@ -90,7 +86,6 @@ function PreviewSheet({
             className="bg-white rounded-2xl border border-slate-200 overflow-hidden text-xs"
             style={{ fontFamily: 'Arial, sans-serif' }}
           >
-            {/* Header */}
             <div style={{ background: '#0c1e3d' }} className="p-4">
               <div className="flex justify-between items-start">
                 <div>
@@ -106,7 +101,6 @@ function PreviewSheet({
               </div>
             </div>
 
-            {/* Bill To */}
             <div className="px-4 py-3 bg-slate-50 border-b border-slate-100">
               <p
                 className="text-slate-400 font-semibold uppercase tracking-wider mb-1"
@@ -125,7 +119,6 @@ function PreviewSheet({
               )}
             </div>
 
-            {/* Items Table */}
             <div className="p-4">
               <p
                 className="text-slate-500 font-semibold uppercase tracking-wider mb-2"
@@ -179,7 +172,6 @@ function PreviewSheet({
                 </div>
               ))}
 
-              {/* Totals */}
               <div className="mt-4 flex justify-end">
                 <div className="w-1/2 space-y-1.5 text-xs">
                   <div className="flex justify-between text-slate-500">
@@ -208,9 +200,6 @@ function PreviewSheet({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  CreateQuotationView  — with "Details" / "Email Details" tabs
-// ─────────────────────────────────────────────────────────────────────────────
 function CreateQuotationView({
   onBack,
   onCreated,
@@ -218,24 +207,19 @@ function CreateQuotationView({
   onBack: () => void;
   onCreated: (q: QuotationResponse) => void;
 }) {
-  // ── Tab state ──────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<'details' | 'email'>('details');
 
-  // ── Companies ──────────────────────────────────────────────────────────────
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
 
-  // ── Details tab fields ─────────────────────────────────────────────────────
   const [companyId, setCompanyId] = useState('');
   const date = todayISO();
   const [items, setItems] = useState<ExtendedItem[]>([makeItem()]);
   const [showPreview, setShowPreview] = useState(false);
 
-  // ── Email Details tab fields ───────────────────────────────────────────────
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
 
-  // ── Action state ───────────────────────────────────────────────────────────
   const [actionState, setActionState] = useState<
     'idle' | 'saving' | 'saved' | 'sending' | 'sent' | 'error'
   >('idle');
@@ -244,8 +228,9 @@ function CreateQuotationView({
   const isLoading = actionState === 'saving' || actionState === 'sending';
 
   useEffect(() => {
+    // 💡 Fetching using the renamed logical method: getEligibleCompanies
     quotationService
-      .getRegisteredCompanies()
+      .getEligibleCompanies()
       .then((data) => setCompanies(data))
       .catch(() => setErrorMsg('Failed to load companies'))
       .finally(() => setLoadingCompanies(false));
@@ -254,7 +239,6 @@ function CreateQuotationView({
   const selectedCompany = companies.find((c) => String(c.id) === companyId);
   const grandTotal = items.reduce((s, i) => s + i.totalAmount, 0);
 
-  // ── Item helpers ───────────────────────────────────────────────────────────
   const updateItem = (id: string, field: keyof ExtendedItem, value: string | number) => {
     setItems((prev) =>
       prev.map((item) => {
@@ -284,27 +268,45 @@ function CreateQuotationView({
   const addItem = () => setItems((prev) => [...prev, makeItem()]);
   const removeItem = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id));
 
-  // ── Validation ─────────────────────────────────────────────────────────────
   const isDetailsValid = !!companyId;
   const isEmailValid = !!emailSubject.trim() && !!emailBody.trim();
   const isSendValid = isDetailsValid && isEmailValid;
 
-  // ── Save only (no email) ───────────────────────────────────────────────────
+  const buildPayload = (): QuotationRequest => {
+    const firstItem = items[0] || makeItem();
+    const subtotal = items.reduce((s, i) => s + (Number(i.rate) || 0), 0);
+    const totalDiscount = items.reduce((s, i) => s + (Number(i.discountAmount) || 0), 0);
+    const totalTax = items.reduce((s, i) => s + (Number(i.taxAmount) || 0), 0);
+    const finalGrandTotal = items.reduce((s, i) => s + i.totalAmount, 0);
+
+    return {
+      companyId: Number(companyId),
+      discountPercent: Number(firstItem.discountPercent) || 0,
+      taxPercent: Number(firstItem.taxPercent) || 0,
+      subtotal: subtotal,
+      discountAmount: totalDiscount,
+      taxAmount: totalTax,
+      totalAmount: finalGrandTotal,
+      items: items.map((i) => ({
+        serviceDescription: i.description,
+        price: Number(i.rate) || 0,
+        rate: Number(i.rate) || 0,
+        amount: Number(i.rate) || 0,
+        discountPercent: Number(i.discountPercent) || 0,
+        taxPercent: Number(i.taxPercent) || 0,
+        discountAmount: Number(i.discountAmount) || 0,
+        taxAmount: Number(i.taxAmount) || 0,
+        totalAmount: i.totalAmount || 0,
+      })),
+    };
+  };
+
   const handleSaveOnly = async () => {
     if (!isDetailsValid || isLoading) return;
     setActionState('saving');
     setErrorMsg('');
     try {
-      const firstItem = items[0];
-      const payload = {
-        companyId: Number(companyId),
-        discountPercent: Number(firstItem.discountPercent) || 0,
-        taxPercent: Number(firstItem.taxPercent) || 0,
-        items: items.map((i) => ({
-          serviceDescription: i.description,
-          price: Number(i.rate) || 0,
-        })),
-      };
+      const payload = buildPayload();
       const created = await quotationService.create(payload);
       onCreated(created);
       setActionState('saved');
@@ -320,27 +322,15 @@ function CreateQuotationView({
     }
   };
 
-  // ── Save + Send email ──────────────────────────────────────────────────────
   const handleSaveAndSend = async () => {
     if (!isSendValid || isLoading) return;
     setActionState('sending');
     setErrorMsg('');
     try {
-      const firstItem = items[0];
-      const payload = {
-        companyId: Number(companyId),
-        discountPercent: Number(firstItem.discountPercent) || 0,
-        taxPercent: Number(firstItem.taxPercent) || 0,
-        items: items.map((i) => ({
-          serviceDescription: i.description,
-          price: Number(i.rate) || 0,
-        })),
-      };
+      const payload = buildPayload();
 
-      // Step 1 — create the quotation record
       const created = await quotationService.create(payload);
 
-      // Step 2 — send email with subject + body
       await quotationService.sendQuotation(created.id, {
         emailSubject: emailSubject.trim(),
         emailBody: emailBody.trim(),
@@ -360,13 +350,11 @@ function CreateQuotationView({
     }
   };
 
-  // ── Tab completion indicators ──────────────────────────────────────────────
   const detailsComplete = isDetailsValid;
   const emailComplete = isEmailValid;
 
   return (
     <div className="flex flex-col h-full max-w-5xl mx-auto w-full bg-white shadow-sm sm:rounded-2xl sm:border border-slate-200 overflow-hidden sm:my-4">
-      {/* ── Top bar ── */}
       <div className="bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-3 shrink-0">
         <button
           onClick={onBack}
@@ -386,13 +374,11 @@ function CreateQuotationView({
         </button>
       </div>
 
-      {/* ── Grand Total Banner ── */}
       <div className="bg-blue-600 px-4 py-2.5 flex items-center justify-between shrink-0">
         <span className="text-blue-200 text-xs">Estimated Total</span>
         <span className="text-white font-bold text-base">{formatCurrency(grandTotal)}</span>
       </div>
 
-      {/* ── Tab switcher ── */}
       <div className="bg-white border-b border-slate-100 px-4 pt-3 pb-0 shrink-0">
         <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
           <button
@@ -431,11 +417,9 @@ function CreateQuotationView({
         <div className="h-3" />
       </div>
 
-      {/* ── Scrollable body ── */}
       <div className="flex-1 overflow-y-auto bg-slate-50">
         <div className="p-4 space-y-4">
 
-          {/* Error banner */}
           {actionState === 'error' && (
             <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3">
               <AlertCircle size={15} className="text-red-500 mt-0.5 shrink-0" />
@@ -445,12 +429,8 @@ function CreateQuotationView({
             </div>
           )}
 
-          {/* ════════════════════════════════════════════════════════════════
-              TAB 1 — DETAILS
-          ════════════════════════════════════════════════════════════════ */}
           {activeTab === 'details' && (
             <>
-              {/* ── Company ── */}
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-slate-50 flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
@@ -495,20 +475,17 @@ function CreateQuotationView({
                 </div>
               </div>
 
-              {/* ── Date (read-only) ── */}
               <div className="flex items-center justify-between bg-white rounded-xl px-3.5 py-3 border border-slate-200 shadow-sm">
                 <span className="text-xs text-slate-500 font-medium">Date</span>
                 <span className="text-sm text-slate-700 font-semibold">{formatDate(date)}</span>
               </div>
 
-              {/* ── Divider ── */}
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-px bg-slate-200" />
                 <span className="text-xs text-slate-400 font-medium">Line Items</span>
                 <div className="flex-1 h-px bg-slate-200" />
               </div>
 
-              {/* ── Items ── */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-medium text-slate-500">{items.length} item(s)</p>
@@ -525,7 +502,6 @@ function CreateQuotationView({
                     key={item.id}
                     className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3"
                   >
-                    {/* Item header */}
                     <div className="flex justify-between items-center">
                       <span className="text-xs font-semibold text-slate-400">Item {idx + 1}</span>
                       {items.length > 1 && (
@@ -538,7 +514,6 @@ function CreateQuotationView({
                       )}
                     </div>
 
-                    {/* Description */}
                     <input
                       value={item.description}
                       onChange={(e) => updateItem(item.id, 'description', e.target.value)}
@@ -546,7 +521,6 @@ function CreateQuotationView({
                       placeholder="Description of goods/services"
                     />
 
-                    {/* Rate */}
                     <div>
                       <label className="text-xs text-slate-400 mb-1 block">Rate (₹)</label>
                       <input
@@ -561,7 +535,6 @@ function CreateQuotationView({
                       />
                     </div>
 
-                    {/* Discount row */}
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-xs text-slate-400 mb-1 block">Discount %</label>
@@ -600,7 +573,6 @@ function CreateQuotationView({
                       </div>
                     </div>
 
-                    {/* Tax row */}
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-xs text-slate-400 mb-1 block">Tax %</label>
@@ -642,7 +614,6 @@ function CreateQuotationView({
                       </div>
                     </div>
 
-                    {/* Item Total */}
                     <div className="flex items-center justify-between bg-blue-50/50 border border-blue-100 rounded-xl px-3.5 py-2.5">
                       <span className="text-xs text-blue-600 font-medium">Item Total</span>
                       <span className="text-sm font-bold text-blue-700">
@@ -653,7 +624,6 @@ function CreateQuotationView({
                 ))}
               </div>
 
-              {/* ── Grand Total Summary ── */}
               {items.length > 0 && (
                 <div className="bg-slate-800 rounded-2xl p-4 shadow-md">
                   <div className="space-y-1.5 text-xs">
@@ -683,7 +653,6 @@ function CreateQuotationView({
                 </div>
               )}
 
-              {/* Summary row showing email completeness */}
               <div className="bg-white rounded-2xl p-4 space-y-2 border border-slate-200 shadow-sm">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   Summary
@@ -724,7 +693,6 @@ function CreateQuotationView({
                 </div>
               </div>
 
-              {/* Nudge to email tab if details done but email missing */}
               {isDetailsValid && !isEmailValid && (
                 <button
                   onClick={() => setActiveTab('email')}
@@ -736,9 +704,6 @@ function CreateQuotationView({
             </>
           )}
 
-          {/* ════════════════════════════════════════════════════════════════
-              TAB 2 — EMAIL DETAILS
-          ════════════════════════════════════════════════════════════════ */}
           {activeTab === 'email' && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
@@ -759,7 +724,6 @@ function CreateQuotationView({
                   Both are required to use "Save &amp; Send".
                 </div>
 
-                {/* Subject */}
                 <div>
                   <label className="block text-xs text-slate-500 mb-1.5 font-medium">
                     Email Subject <span className="text-red-500">*</span>
@@ -776,7 +740,6 @@ function CreateQuotationView({
                   <p className="text-xs text-slate-400 mt-1">{emailSubject.length} characters</p>
                 </div>
 
-                {/* Body */}
                 <div>
                   <label className="block text-xs text-slate-500 mb-1.5 font-medium">
                     Email Body <span className="text-red-500">*</span>
@@ -795,7 +758,6 @@ function CreateQuotationView({
                   <p className="text-xs text-slate-400 mt-1">{emailBody.length} characters</p>
                 </div>
 
-                {/* Live preview card */}
                 {(emailSubject.trim() || emailBody.trim()) && (
                   <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
                     <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200">
@@ -824,7 +786,6 @@ function CreateQuotationView({
                   </div>
                 )}
 
-                {/* Back nudge if details not done */}
                 {!isDetailsValid && (
                   <button
                     onClick={() => setActiveTab('details')}
@@ -841,9 +802,7 @@ function CreateQuotationView({
         </div>
       </div>
 
-      {/* ── Bottom action bar ── */}
       <div className="px-4 py-4 bg-white border-t border-slate-200 shrink-0 space-y-2 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] z-10 relative">
-        {/* Warning if send is blocked */}
         {isDetailsValid && !isEmailValid && (
           <p className="text-center text-xs text-amber-500 pb-1 font-medium">
             ⚠ Fill in Email Details (subject &amp; body) to enable Save &amp; Send
@@ -851,7 +810,6 @@ function CreateQuotationView({
         )}
 
         <div className="flex gap-3">
-          {/* Download */}
           <button
             onClick={() => window.print()}
             className="flex-1 flex items-center justify-center gap-2 py-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition-colors shadow-sm"
@@ -859,7 +817,6 @@ function CreateQuotationView({
             <Download size={15} /> Download
           </button>
 
-          {/* Save only (no email) */}
           <button
             onClick={handleSaveOnly}
             disabled={!isDetailsValid || isLoading}
@@ -875,7 +832,6 @@ function CreateQuotationView({
           </button>
         </div>
 
-        {/* Save & Send (requires email details) */}
         <button
           onClick={handleSaveAndSend}
           disabled={!isSendValid || isLoading}
@@ -891,7 +847,6 @@ function CreateQuotationView({
         </button>
       </div>
 
-      {/* Preview overlay */}
       {showPreview && (
         <PreviewSheet
           quotation={{ quotationNo: 'Preview', date }}
@@ -904,16 +859,12 @@ function CreateQuotationView({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  QuotationsPage  (default export — list view)
-// ─────────────────────────────────────────────────────────────────────────────
 export default function QuotationsPage() {
   const [view, setView] = useState<'list' | 'create'>('list');
   const [quotations, setQuotations] = useState<QuotationResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewQuotation, setViewQuotation] = useState<QuotationResponse | null>(null);
   
-  // ─── Search State ──────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadQuotations = () => {
@@ -929,10 +880,9 @@ export default function QuotationsPage() {
 
   const handleCreated = (q: QuotationResponse) => {
     setQuotations((prev) => [q, ...prev]);
-    setView('list'); // Automatically close modal after successful creation
+    setView('list'); 
   };
 
-  // ─── Filter Logic ──────────────────────────────────────────────────────────
   const filteredQuotations = quotations.filter((q) =>
     q.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     q.quotationNumber?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -940,7 +890,6 @@ export default function QuotationsPage() {
 
   return (
     <div className="p-4 space-y-4 relative">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-slate-800" style={{ fontSize: '1.2rem', fontWeight: 700 }}>
@@ -956,7 +905,6 @@ export default function QuotationsPage() {
         </button>
       </div>
 
-      {/* ─── Search Bar ────────────────────────────────────────────────────────── */}
       <div className="relative shadow-sm">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <Search size={16} className="text-slate-400" />
@@ -970,7 +918,6 @@ export default function QuotationsPage() {
         />
       </div>
 
-      {/* Summary card */}
       <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex items-center justify-between shadow-sm">
         <div>
           <p className="text-slate-800 font-bold text-2xl">{quotations.length}</p>
@@ -981,14 +928,12 @@ export default function QuotationsPage() {
         </div>
       </div>
 
-      {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-10 gap-2 text-slate-400 text-sm">
           <Loader2 size={18} className="animate-spin" /> Loading quotations…
         </div>
       )}
 
-      {/* List */}
       {!loading && (
         <div className="space-y-2">
           {filteredQuotations.map((q) => (
@@ -1050,14 +995,12 @@ export default function QuotationsPage() {
         </div>
       )}
 
-      {/* ── Render Creation Form as a Modal Layer ── */}
       {view === 'create' && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm">
           <CreateQuotationView onBack={() => setView('list')} onCreated={handleCreated} />
         </div>
       )}
 
-      {/* View existing quotation preview */}
       {viewQuotation && (
         <PreviewSheet
           quotation={{

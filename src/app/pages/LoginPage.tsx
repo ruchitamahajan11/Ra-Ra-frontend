@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Scale, Mail, Lock, Eye, EyeOff, AlertCircle, ChevronRight } from 'lucide-react';
+import { Scale, User, Lock, Eye, EyeOff, AlertCircle, ChevronRight, Loader2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export default function LoginPage() {
   const { login } = useApp();
   const navigate = useNavigate();
-  // Pre-filled hardcoded credentials for easy testing
-  const [email, setEmail] = useState('admin@techcorp.in');
-  const [password, setPassword] = useState('Admin@123');
+
+  const [username, setUsername] = useState('admin');
+  const [password, setPassword] = useState('admin123');
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,15 +17,14 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    await new Promise(r => setTimeout(r, 600));
-    
-    const ok = login(email, password);
+
+    const ok = await login(username, password);
     setLoading(false);
-    
+
     if (ok) {
-      navigate('/'); // Redirect to dashboard on success
+      navigate('/');
     } else {
-      setError('Invalid email or password. Please try again.');
+      setError('Invalid username or password. Please try again.');
     }
   };
 
@@ -76,7 +75,6 @@ export default function LoginPage() {
       </div>
 
       {/* ── RIGHT PANEL — login form ── */}
-      {/* Mobile: full screen card-from-bottom | Desktop: white right half */}
       <div className="flex flex-col w-full lg:w-[480px] lg:shrink-0">
 
         {/* Mobile: top brand area */}
@@ -90,7 +88,6 @@ export default function LoginPage() {
         </div>
 
         {/* Form area */}
-        {/* Mobile: white rounded-top sheet | Desktop: full white right panel */}
         <div
           className="bg-white lg:flex-1 lg:flex lg:flex-col lg:justify-center rounded-t-3xl lg:rounded-none px-6 lg:px-12 pt-8 pb-10"
           style={{ boxShadow: '0 -8px 40px rgba(0,0,0,0.2)' }}
@@ -108,16 +105,17 @@ export default function LoginPage() {
               )}
 
               <div>
-                <label className="block text-xs text-slate-500 mb-1.5 font-medium">Email Address</label>
+                <label className="block text-xs text-slate-500 mb-1.5 font-medium">Username</label>
                 <div className="relative">
-                  <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
+                    type="text"
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
                     className="w-full pl-10 pr-4 py-3.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
-                    placeholder="admin@techcorp.in"
+                    placeholder="Enter your username"
                     required
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -133,6 +131,7 @@ export default function LoginPage() {
                     className="w-full pl-10 pr-11 py-3.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
                     placeholder="Enter your password"
                     required
+                    autoComplete="off"
                   />
                   <button
                     type="button"
@@ -149,7 +148,10 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full flex items-center justify-center gap-2 py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-60 mt-2"
               >
-                {loading ? 'Signing in...' : <> Sign In <ChevronRight size={16} /> </>}
+                {loading
+                  ? <><Loader2 size={16} className="animate-spin" /> Signing in…</>
+                  : <> Sign In <ChevronRight size={16} /> </>
+                }
               </button>
             </form>
           </div>

@@ -13,7 +13,7 @@ interface AppContextType {
   invoices: Invoice[];
   companiesLoading: boolean;
   companiesError: string | null;
-  login: (email: string, password: string) => boolean;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   addCompany: (company: Company) => void;
   updateCompany: (id: string, data: Partial<Company>) => void;
@@ -28,8 +28,10 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  // ✅ Setting this to 'false' is what forces the app to open the login page first
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Check localStorage for existing token so user stays logged in on refresh
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+    () => !!localStorage.getItem('jwt_token')
+  );
   const [companies, setCompanies] = useState<Company[]>([]);
   const [quotations, setQuotations] = useState<Quotation[]>(initialQuotations);
   const [agreements, setAgreements] = useState<Agreement[]>(initialAgreements);
@@ -37,8 +39,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [companiesLoading, setCompaniesLoading] = useState(false);
   const [companiesError, setCompaniesError] = useState<string | null>(null);
 
-  // ✅ Fetch companies from backend on app load
+  // Fetch companies once authenticated
   useEffect(() => {
+    if (!isAuthenticated) return;
     const fetchCompanies = async () => {
       setCompaniesLoading(true);
       setCompaniesError(null);
@@ -58,18 +61,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     };
     fetchCompanies();
-  }, []);
+  }, [isAuthenticated]);
 
-  const login = (email: string, password: string): boolean => {
-    // Hardcoded credentials
-    if (email === 'admin@techcorp.in' && password === 'Admin@123') {
-      setIsAuthenticated(true);
-      return true;
+  // Call real login API, store JWT token on success
+  const login = async (username: string, password: string): Promise<boolean> => {
+    try {
+      console.log('🔐 Calling login API...');
+      const response = await api.post('/api/auth/login', { username, password });
+      const data = response.data;
+      console.log('✅ Login response:', data);
+
+      // Handle all response shapes:
+      // { token }, { accessToken }, { data: 'jwt...' }, { data: { token } }, { data: { accessToken } }
+      const token =
+        data.token ??
+        data.accessToken ??
+        (typeof data.data === 'string' ? data.data : null) ??
+        data.data?.token ??
+        data.data?.accessToken;
+
+      if (token) {
+        localStorage.setItem('jwt_token', token);
+        setIsAuthenticated(true);
+        return true;
+      }
+      return false;
+    } catch (err: any) {
+      console.error('❌ Login failed:', err?.response?.data || err.message);
+      return false;
     }
-    return false;
   };
 
-  const logout = () => setIsAuthenticated(false);
+  const logout = () => {
+    localStorage.removeItem('jwt_token');
+    setIsAuthenticated(false);
+    setCompanies([]);
+  };
 
   const addCompany = (c: Company) => setCompanies(prev => [c, ...prev]);
   const updateCompany = (id: string, data: Partial<Company>) =>
